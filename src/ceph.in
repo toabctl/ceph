@@ -342,10 +342,11 @@ def new_style_command(parsed_args, cmdargs, target, sigdict, inbuf, verbose):
     if not got_command:
         if cmdargs:
             # Validate input args against list of sigs
-            valid_dict = validate_command(parsed_args, sigdict, cmdargs,
-                                          verbose)
+            valid_dict = validate_command(sigdict, cmdargs, verbose)
             if valid_dict:
                 got_command = True
+                if parsed_args.output_format:
+                    valid_dict['format'] = parsed_args.output_format
             else:
                 return -errno.EINVAL, '', 'invalid command'
         else:
@@ -360,6 +361,8 @@ def new_style_command(parsed_args, cmdargs, target, sigdict, inbuf, verbose):
                 target = find_cmd_target(cmdargs)
                 valid_dict = validate_command(parsed_args, sigdict, cmdargs)
                 if valid_dict:
+                    if parsed_args.output_format:
+                        valid_dict['format'] = parsed_args.output_format
                     if verbose:
                         print >> sys.stderr, "Submitting command ", valid_dict
                     ret, outbuf, outs = json_command(cluster_handle,
