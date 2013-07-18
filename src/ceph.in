@@ -184,7 +184,7 @@ def do_help(parser, args, help_all = False):
         help_for_target(target=('mon', ''), partial=partial)
 
     if help_all and cluster_handle:
-        cmd = json.dumps({"prefix":"get_command_descriptions"})
+        cmd = 'get_command_descriptions'
         # try/except in case there are no daemons of that type
         try:
             firstosd = osdids()[0]
@@ -195,7 +195,9 @@ def do_help(parser, args, help_all = False):
             sock = ceph_conf('admin_socket', 'osd.' + firstosd)
             sigs = admin_socket(sock, cmd, format='json')
             help_for_sigs(sigs, partial)
-        except:
+        except Exception as e:
+            if verbose:
+                raise e
             pass
 
         try:
@@ -205,6 +207,8 @@ def do_help(parser, args, help_all = False):
             sigs = admin_socket(sock, cmd, format='json')
             help_for_sigs(sigs, partial)
         except:
+            if verbose:
+                raise e
             pass
 
         try:
@@ -214,6 +218,8 @@ def do_help(parser, args, help_all = False):
             sigs = admin_socket(sock, cmd, format='json')
             help_for_sigs(sigs, partial)
         except:
+            if verbose:
+                raise e
             pass
 
     return 0
@@ -335,7 +341,7 @@ def admin_socket(asok_path, cmd, format=''):
     except Exception as e:
         raise RuntimeError('exception getting command descriptions: ' + str(e))
 
-    if cmd[0] == 'get_command_descriptions':
+    if cmd == 'get_command_descriptions':
         return cmd_json
 
     sigdict = parse_json_funcsigs(cmd_json, 'cli')
