@@ -2317,7 +2317,7 @@ public:
     if (ret < 0)
       return ret;
 
-    return 0;
+    return EAPPLIED;
   }
 
   struct list_keys_info {

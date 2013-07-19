@@ -179,7 +179,19 @@ void RGWOp_Metadata_Put::execute() {
     dout(5) << "ERROR: can't put key: " << cpp_strerror(http_ret) << dendl;
     return;
   }
-  http_ret = 0;
+  // translate internal codes into return header
+  if (http_ret == ENOAPPLY)
+    update_status = "skipped";
+  else if (http_ret == EAPPLIED)
+    update_status = "applied";
+  http_ret = STATUS_NO_CONTENT;
+}
+
+void RGWOp_Metadata_Put::send_response() {
+  set_req_state_err(s, http_ret);
+  dump_errno(s);
+  dump_pair(s, "RGWX_UPDATE_STATUS", update_status);
+  end_header(s);
 }
 
 void RGWOp_Metadata_Delete::execute() {
