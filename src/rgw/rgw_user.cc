@@ -2310,7 +2310,7 @@ public:
     // are we actually going to perform this put, or is it too old?
     if (!check_versions(objv_tracker.read_version, orig_mtime,
 			objv_tracker.write_version, mtime, sync_mode)) {
-      return ENOAPPLY;
+      return STATUS_NO_APPLY;
     }
 
     ret = rgw_store_user_info(store, info, &old_info, &objv_tracker, mtime, false);

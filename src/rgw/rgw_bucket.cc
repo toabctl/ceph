@@ -1410,7 +1410,7 @@ public:
     // are we actually going to perform this put, or is it too old?
     if (!check_versions(old_ot.read_version, orig_mtime,
 			objv_tracker.write_version, mtime, sync_type)) {
-      return ENOAPPLY;
+      return STATUS_NO_APPLY;
     }
 
     objv_tracker.read_version = old_ot.read_version; /* maintain the obj version we just read */
@@ -1574,7 +1574,7 @@ public:
     if (!check_versions(old_bci.info.objv_tracker.read_version, orig_mtime,
 			objv_tracker.write_version, mtime, sync_type)) {
       objv_tracker.read_version = old_bci.info.objv_tracker.read_version;
-      return ENOAPPLY;
+      return STATUS_NO_APPLY;
     }
 
     /* record the read version (if any), store the new version */
