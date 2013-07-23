@@ -1930,6 +1930,8 @@ bool OSDMonitor::preprocess_command(MMonCommand *m)
 
   if (prefix == "osd stat") {
     osdmap.print_summary(f.get(), ds);
+    if (f)
+      f->flush(ds);
     rdata.append(ds);
   }
   else if (prefix == "osd dump" ||
