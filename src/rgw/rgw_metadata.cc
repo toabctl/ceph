@@ -331,7 +331,7 @@ int RGWMetadataManager::get(string& metadata_key, Formatter *f)
 
 int RGWMetadataManager::put(string& metadata_key, bufferlist& bl,
                             RGWMetadataHandler::sync_type_t sync_type,
-                            RGWObjVersionTracker *existing_version)
+                            obj_version *existing_version)
 {
   RGWMetadataHandler *handler;
   string entry;
@@ -362,7 +362,7 @@ int RGWMetadataManager::put(string& metadata_key, bufferlist& bl,
 
   ret = handler->put(store, entry, objv_tracker, mtime, jo, sync_type);
   if (existing_version) {
-    existing_version->read_version = objv_tracker.read_version;
+    *existing_version = objv_tracker.read_version;
   }
   return ret;
 }

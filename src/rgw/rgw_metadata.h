@@ -198,7 +198,7 @@ public:
   int get(string& metadata_key, Formatter *f);
   int put(string& metadata_key, bufferlist& bl,
           RGWMetadataHandler::sync_type_t sync_mode,
-          RGWObjVersionTracker *existing_version = NULL);
+          obj_version *existing_version = NULL);
   int remove(string& metadata_key);
 
   int list_keys_init(string& section, void **phandle);
