@@ -26,7 +26,6 @@ enum RGWMDLogStatus {
 };
 
 #define STATUS_APPLIED 0
-#define STATUS_NO_APPLY 1
 
 class RGWMetadataObject {
 protected:
