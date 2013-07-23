@@ -182,7 +182,7 @@ void RGWOp_Metadata_Put::execute() {
   // translate internal codes into return header
   if (http_ret == STATUS_NO_APPLY)
     update_status = "skipped";
-  else if (http_ret == EAPPLIED)
+  else if (http_ret == STATUS_APPLIED)
     update_status = "applied";
   http_ret = STATUS_NO_CONTENT;
 }

@@ -1591,7 +1591,7 @@ public:
     if (ret < 0)
       return ret;
 
-    return EAPPLIED;
+    return STATUS_APPLIED;
   }
 
   struct list_keys_info {
