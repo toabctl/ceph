@@ -1,35 +1,5 @@
 #!/usr/bin/python
 
-DEFAULT_IMAGE='ceph/daemon-base:latest-master'  # FIXME when octopus is ready!!!
-DATA_DIR='/var/lib/ceph'
-LOG_DIR='/var/log/ceph'
-LOGROTATE_DIR='/etc/logrotate.d'
-UNIT_DIR='/etc/systemd/system'
-LOG_DIR_MODE=0o770
-DATA_DIR_MODE=0o700
-PODMAN_PREFERENCE = ['podman', 'docker']  # prefer podman to docker
-
-"""
-You can invoke ceph-daemon in two ways:
-
-1. The normal way, at the command line.
-
-2. By piping the script to the python3 binary.  In this latter case, you should
-   prepend one or more lines to the beginning of the script.
-
-   For arguments,
-
-       injected_argv = [...]
-
-   e.g.,
-
-       injected_argv = ['ls']
-
-   For reading stdin from the '--config-and-json -' argument,
-
-       injected_stdin = '...'
-"""
-
 import argparse
 try:
     from ConfigParser import ConfigParser   # py2
@@ -56,7 +26,7 @@ from distutils.spawn import find_executable
 from glob import glob
 
 try:
-    from tempfile import TemporaryDirectory # py3
+    from tempfile import TemporaryDirectory  # py3
 except ImportError:
     # define a minimal (but sufficient) equivalent for <= py 3.2
     class TemporaryDirectory(object):
@@ -75,10 +45,41 @@ except ImportError:
             self.cleanup()
 
 
+DEFAULT_IMAGE = 'ceph/daemon-base:latest-master'  # FIXME when octopus is ready!!!
+DATA_DIR = '/var/lib/ceph'
+LOG_DIR = '/var/log/ceph'
+LOGROTATE_DIR = '/etc/logrotate.d'
+UNIT_DIR = '/etc/systemd/system'
+LOG_DIR_MODE = 0o770
+DATA_DIR_MODE = 0o700
+PODMAN_PREFERENCE = ['podman', 'docker']  # prefer podman to docker
+
+"""
+You can invoke ceph-daemon in two ways:
+
+1. The normal way, at the command line.
+
+2. By piping the script to the python3 binary.  In this latter case, you should
+   prepend one or more lines to the beginning of the script.
+
+   For arguments,
+
+       injected_argv = [...]
+
+   e.g.,
+
+       injected_argv = ['ls']
+
+   For reading stdin from the '--config-and-json -' argument,
+
+       injected_stdin = '...'
+"""
+
 podman_path = None
 
 ##################################
 # Popen wrappers, lifted from ceph-volume
+
 
 def call(command, desc=None, verbose=False, **kwargs):
     """
@@ -180,24 +181,27 @@ def call(command, desc=None, verbose=False, **kwargs):
 
     return out, err, returncode
 
+
 def call_throws(command, **kwargs):
     out, err, ret = call(command, **kwargs)
     if ret:
         raise RuntimeError('Failed command: %s' % ' '.join(command))
     return out, err, ret
 
-##################################
 
 def pathify(p):
     if not p.startswith('/'):
         return os.path.join(os.getcwd(), p)
     return p
 
+
 def get_hostname():
     return socket.gethostname()
 
+
 def make_fsid():
     return str(uuid.uuid1())
+
 
 def is_fsid(s):
     try:
@@ -205,6 +209,7 @@ def is_fsid(s):
     except ValueError:
         return False
     return True
+
 
 def makedirs(dir, uid, gid, mode):
     if not os.path.exists(dir):
@@ -214,11 +219,14 @@ def makedirs(dir, uid, gid, mode):
     os.chown(dir, uid, gid)
     os.chmod(dir, mode)   # the above is masked by umask...
 
+
 def get_data_dir(fsid, t, n):
     return os.path.join(args.data_dir, fsid, '%s.%s' % (t, n))
 
+
 def get_log_dir(fsid):
     return os.path.join(args.log_dir, fsid)
+
 
 def make_data_dir_base(fsid, uid, gid):
     data_dir_base = os.path.join(args.data_dir, fsid)
@@ -228,6 +236,7 @@ def make_data_dir_base(fsid, uid, gid):
              DATA_DIR_MODE)
     return data_dir_base
 
+
 def make_data_dir(fsid, daemon_type, daemon_id, uid=None, gid=None):
     if not uid:
         (uid, gid) = extract_uid_gid()
@@ -236,6 +245,7 @@ def make_data_dir(fsid, daemon_type, daemon_id, uid=None, gid=None):
     makedirs(data_dir, uid, gid, DATA_DIR_MODE)
     return data_dir
 
+
 def make_log_dir(fsid, uid=None, gid=None):
     if not uid:
         (uid, gid) = extract_uid_gid()
@@ -243,11 +253,13 @@ def make_log_dir(fsid, uid=None, gid=None):
     makedirs(log_dir, uid, gid, LOG_DIR_MODE)
     return log_dir
 
+
 def find_program(filename):
     name = find_executable(filename)
     if name is None:
         raise ValueError('%s not found' % filename)
     return name
+
 
 def get_unit_name(fsid, daemon_type, daemon_id=None):
     # accept either name or type + id
@@ -255,6 +267,7 @@ def get_unit_name(fsid, daemon_type, daemon_id=None):
         return 'ceph-%s@%s.%s' % (fsid, daemon_type, daemon_id)
     else:
         return 'ceph-%s@%s' % (fsid, daemon_type)
+
 
 def check_unit(unit_name):
     # NOTE: we ignore the exit code here because systemctl outputs
@@ -286,6 +299,7 @@ def check_unit(unit_name):
         state = 'unknown'
     return (enabled, state)
 
+
 def get_legacy_config_fsid(cluster):
     try:
         config = ConfigParser()
@@ -293,9 +307,11 @@ def get_legacy_config_fsid(cluster):
         if config.has_section('global') and config.has_option('global', 'fsid'):
             return config.get('global', 'fsid')
     except Exception as e:
-        logger.warning('unable to parse \'fsid\' from \'[global]\' section of /etc/ceph/ceph.conf: %s' % e)
+        logger.warning('unable to parse \'fsid\' from \'[global]\' section '
+                       'of /etc/ceph/ceph.conf: %s' % e)
         return None
     return None
+
 
 def get_legacy_daemon_fsid(cluster, daemon_type, daemon_id):
     fsid = None
@@ -312,6 +328,7 @@ def get_legacy_daemon_fsid(cluster, daemon_type, daemon_id):
         fsid = get_legacy_config_fsid(cluster)
     return fsid
 
+
 def get_daemon_args(fsid, daemon_type, daemon_id):
     r = [
         '--default-log-to-file=false',
@@ -320,6 +337,7 @@ def get_daemon_args(fsid, daemon_type, daemon_id):
     r += ['--setuser', 'ceph']
     r += ['--setgroup', 'ceph']
     return r
+
 
 def create_daemon_dirs(fsid, daemon_type, daemon_id, uid, gid,
                        config=None, keyring=None):
@@ -336,6 +354,7 @@ def create_daemon_dirs(fsid, daemon_type, daemon_id, uid, gid,
             os.fchmod(f.fileno(), 0o600)
             os.fchown(f.fileno(), uid, gid)
             f.write(keyring)
+
 
 def get_config_and_keyring():
     if args.config_and_keyring:
@@ -361,6 +380,7 @@ def get_config_and_keyring():
         with open(args.config, 'r') as f:
             config = f.read()
     return (config, keyring)
+
 
 def get_config_and_both_keyrings():
     if args.config_and_keyrings:
@@ -390,10 +410,11 @@ def get_config_and_both_keyrings():
             config = f.read()
         return (config, keyring, crash_keyring)
 
+
 def get_container_mounts(fsid, daemon_type, daemon_id):
     mounts = {}
     if fsid:
-        run_path = os.path.join('/var/run/ceph', fsid);
+        run_path = os.path.join('/var/run/ceph', fsid)
         if os.path.exists(run_path):
             mounts[run_path] = '/var/run/ceph:z'
         log_dir = get_log_dir(fsid)
@@ -421,6 +442,7 @@ def get_container_mounts(fsid, daemon_type, daemon_id):
 
     return mounts
 
+
 def get_container(fsid, daemon_type, daemon_id, privileged=False,
                   podman_args=None):
     if not podman_args:
@@ -438,12 +460,13 @@ def get_container(fsid, daemon_type, daemon_id, privileged=False,
         entrypoint=entrypoint,
         args=[
             '-n', name,
-            '-f', # foreground
+            '-f',  # foreground
         ] + get_daemon_args(fsid, daemon_type, daemon_id),
         podman_args=podman_args,
         volume_mounts=get_container_mounts(fsid, daemon_type, daemon_id),
         cname='ceph-%s-%s.%s' % (fsid, daemon_type, daemon_id),
     )
+
 
 def extract_uid_gid():
     out = CephContainer(
@@ -453,6 +476,7 @@ def extract_uid_gid():
     ).run()
     (uid, gid) = out.split(':')[2:4]
     return (int(uid), int(gid))
+
 
 def deploy_daemon(fsid, daemon_type, daemon_id, c, uid, gid,
                   config=None, keyring=None):
@@ -476,7 +500,7 @@ def deploy_daemon(fsid, daemon_type, daemon_id, c, uid, gid,
         create_daemon_dirs(fsid, daemon_type, daemon_id, uid, gid)
         mon_dir = get_data_dir(fsid, 'mon', daemon_id)
         log_dir = get_log_dir(fsid)
-        out = CephContainer(
+        CephContainer(
             image=args.image,
             entrypoint='/usr/bin/ceph-mon',
             args=['--mkfs',
@@ -484,7 +508,7 @@ def deploy_daemon(fsid, daemon_type, daemon_id, c, uid, gid,
                   '--fsid', fsid,
                   '-c', '/tmp/config',
                   '--keyring', '/tmp/keyring',
-            ] + get_daemon_args(fsid, 'mon', daemon_id),
+                  ] + get_daemon_args(fsid, 'mon', daemon_id),
             volume_mounts={
                 log_dir: '/var/log/ceph:z',
                 mon_dir: '/var/lib/ceph/mon/ceph-%s:z' % (daemon_id),
@@ -522,6 +546,7 @@ def deploy_daemon(fsid, daemon_type, daemon_id, c, uid, gid,
 
     deploy_daemon_units(fsid, uid, gid, daemon_type, daemon_id, c)
 
+
 def deploy_daemon_units(fsid, uid, gid, daemon_type, daemon_id, c,
                         enable=True, start=True):
     # cmd
@@ -549,6 +574,7 @@ def deploy_daemon_units(fsid, uid, gid, daemon_type, daemon_id, c,
         call_throws(['systemctl', 'enable', unit_name])
     if start:
         call_throws(['systemctl', 'start', unit_name])
+
 
 def install_base_units(fsid):
     """
@@ -583,9 +609,8 @@ def install_base_units(fsid):
                 'Before=ceph.target\n'
                 '\n'
                 '[Install]\n'
-                'WantedBy=multi-user.target ceph.target\n'.format(
-                    fsid=fsid)
-        )
+                'WantedBy=multi-user.target ceph.target\n'.format(fsid=fsid)
+                )
         os.rename(args.unit_dir + '/ceph-%s.target.new' % fsid,
                   args.unit_dir + '/ceph-%s.target' % fsid)
     if not existed:
@@ -615,7 +640,8 @@ def install_base_units(fsid):
     notifempty
     su root ceph
 }
-""" % fsid)
+""" % fsid)  # noqa 
+
 
 def deploy_crash(fsid, uid, gid, config, keyring):
     crash_dir = os.path.join(args.data_dir, fsid, 'crash')
@@ -664,11 +690,12 @@ def deploy_crash(fsid, uid, gid, config, keyring):
                     podman_path=podman_path,
                     fsid=fsid,
                     cmd=' '.join(c.run_cmd()))
-        )
+                )
         os.rename(os.path.join(args.unit_dir, unit_name + '.new'),
                   os.path.join(args.unit_dir, unit_name))
     subprocess.check_output(['systemctl', 'enable', unit_name])
     subprocess.check_output(['systemctl', 'start', unit_name])
+
 
 def get_unit_file(fsid, uid, gid):
     install_path = find_program('install')
@@ -702,14 +729,14 @@ StartLimitBurst=5
 
 [Install]
 WantedBy=ceph-{fsid}.target
-""".format(
-    podman_path=podman_path,
-    install_path=install_path,
-    fsid=fsid,
-    uid=uid,
-    gid=gid,
-    data_dir=args.data_dir)
+""".format(podman_path=podman_path,
+           install_path=install_path,
+           fsid=fsid,
+           uid=uid,
+           gid=gid,
+           data_dir=args.data_dir)
     return u
+
 
 def gen_ssh_key(fsid):
     tmp_dir = TemporaryDirectory()
@@ -729,7 +756,6 @@ def gen_ssh_key(fsid):
     tmp_dir.cleanup()
     return (secret, pub)
 
-##################################
 
 class CephContainer:
     def __init__(self,
@@ -773,9 +799,6 @@ class CephContainer:
             '-e', 'CONTAINER_IMAGE=%s' % self.image,
             '-e', 'NODE_NAME=%s' % get_hostname(),
         ]
-        cmd_args = []
-        if cmd:
-            cmd_args = ['-c'] + cmd
         return [
             podman_path,
             'run',
@@ -799,14 +822,11 @@ class CephContainer:
         return out
 
 
-##################################
-
 def command_version():
     out = CephContainer(args.image, 'ceph', ['--version']).run()
     print(out.strip())
     return 0
 
-##################################
 
 def command_bootstrap():
     fsid = args.fsid or make_fsid()
@@ -829,7 +849,7 @@ def command_bootstrap():
         raise RuntimeError('must specify --mon-ip or --mon-addrv')
     if not cp.has_section('global'):
         cp.add_section('global')
-    cp.set('global', 'fsid', fsid);
+    cp.set('global', 'fsid', fsid)
     cp.set('global', 'mon host', addr_arg)
     cp.set('global', 'container_image', args.image)
     cpf = StringIO()
@@ -907,7 +927,7 @@ def command_bootstrap():
               '--fsid', fsid,
               '--addv', mon_id, addr_arg,
               '/tmp/monmap'
-        ],
+              ],
         volume_mounts={
             tmp_monmap.name: '/tmp/monmap:z',
         },
@@ -927,7 +947,7 @@ def command_bootstrap():
               '-c', '/dev/null',
               '--monmap', '/tmp/monmap',
               '--keyring', '/tmp/keyring',
-        ] + get_daemon_args(fsid, 'mon', mon_id),
+              ] + get_daemon_args(fsid, 'mon', mon_id),
         volume_mounts={
             log_dir: '/var/log/ceph:z',
             mon_dir: '/var/lib/ceph/mon/ceph-%s:z' % (mon_id),
@@ -949,7 +969,7 @@ def command_bootstrap():
     os.fchmod(tmp_admin_keyring.fileno(), 0o600)
     os.fchown(tmp_admin_keyring.fileno(), uid, gid)
     tmp_admin_keyring.write('[client.admin]\n'
-                      '\tkey = ' + admin_key + '\n')
+                            '\tkey = ' + admin_key + '\n')
     tmp_admin_keyring.flush()
 
     tmp_config = tempfile.NamedTemporaryFile(mode='w')
@@ -1164,7 +1184,6 @@ def command_bootstrap():
     logger.info('Bootstrap complete.')
     return 0
 
-##################################
 
 def command_deploy():
     (daemon_type, daemon_id) = args.name.split('.', 1)
@@ -1186,14 +1205,12 @@ def command_deploy():
     if crash_keyring:
         deploy_crash(args.fsid, uid, gid, config, crash_keyring)
 
-##################################
 
 def command_run():
     (daemon_type, daemon_id) = args.name.split('.', 1)
     c = get_container(args.fsid, daemon_type, daemon_id)
     return subprocess.call(c.run_cmd())
 
-##################################
 
 def command_shell():
     if args.fsid:
@@ -1229,7 +1246,6 @@ def command_shell():
         volume_mounts=mounts)
     return subprocess.call(c.shell_cmd(command))
 
-##################################
 
 def command_enter():
     (daemon_type, daemon_id) = args.name.split('.', 1)
@@ -1246,7 +1262,6 @@ def command_enter():
                       podman_args=podman_args)
     return subprocess.call(c.exec_cmd(command))
 
-##################################
 
 def command_ceph_volume():
     make_log_dir(args.fsid)
@@ -1287,7 +1302,6 @@ def command_ceph_volume():
     if not code:
         print(out)
 
-##################################
 
 def command_unit():
     (daemon_type, daemon_id) = args.name.split('.', 1)
@@ -1297,11 +1311,11 @@ def command_unit():
         args.command,
         unit_name])
 
-##################################
 
 def command_ls():
     ls = list_daemons()
     print(json.dumps(ls, indent=4))
+
 
 def list_daemons():
     host_version = None
@@ -1380,8 +1394,6 @@ def list_daemons():
     return ls
 
 
-##################################
-
 def command_adopt():
     (daemon_type, daemon_id) = args.name.split('.', 1)
     (uid, gid) = extract_uid_gid()
@@ -1423,7 +1435,7 @@ def command_adopt():
         # logs
         logger.info('Moving logs...')
         log_dir_src = ('/var/log/ceph/%s-%s.%s.log*' %
-                        (args.cluster, daemon_type, daemon_id))
+                       (args.cluster, daemon_type, daemon_id))
         log_dir_dst = make_log_dir(fsid, uid=uid, gid=gid)
         for log_file in glob(log_dir_src):
             logger.debug('Move \'%s\' -> \'%s\'' % (log_file, log_dir_dst))
@@ -1437,7 +1449,6 @@ def command_adopt():
     else:
         raise RuntimeError('adoption of style %s not implemented' % args.style)
 
-##################################
 
 def command_rm_daemon():
     (daemon_type, daemon_id) = args.name.split('.', 1)
@@ -1454,7 +1465,6 @@ def command_rm_daemon():
     data_dir = get_data_dir(args.fsid, daemon_type, daemon_id)
     call_throws(['rm', '-rf', data_dir])
 
-##################################
 
 def command_rm_cluster():
     if not args.force:
@@ -1492,24 +1502,22 @@ def command_rm_cluster():
 
     # rm units
     call_throws(['rm', '-f', args.unit_dir +
-                             '/ceph-%s@.service' % args.fsid])
+                 '/ceph-%s@.service' % args.fsid])
     call_throws(['rm', '-f', args.unit_dir +
-                             '/ceph-%s-crash.service' % args.fsid])
+                 '/ceph-%s-crash.service' % args.fsid])
     call_throws(['rm', '-f', args.unit_dir +
-                             '/ceph-%s.target' % args.fsid])
+                 '/ceph-%s.target' % args.fsid])
     call_throws(['rm', '-rf',
-                  args.unit_dir + '/ceph-%s.target.wants' % args.fsid])
+                 args.unit_dir + '/ceph-%s.target.wants' % args.fsid])
     # rm data
     call_throws(['rm', '-rf', args.data_dir + '/' + args.fsid])
     # rm logs
     call_throws(['rm', '-rf', args.log_dir + '/' + args.fsid])
     call_throws(['rm', '-rf', args.log_dir +
-                             '/*.wants/ceph-%s@*' % args.fsid])
+                 '/*.wants/ceph-%s@*' % args.fsid])
     # rm logrotate config
     call_throws(['rm', '-f', args.logrotate_dir + '/ceph-%s' % args.fsid])
 
-
-##################################
 
 def _get_parser():
     parser = argparse.ArgumentParser(
@@ -1718,7 +1726,7 @@ def _get_parser():
         help='do not verify that mon IP is pingable')
 
     parser_deploy = subparsers.add_parser(
-    'deploy', help='deploy a daemon')
+        'deploy', help='deploy a daemon')
     parser_deploy.set_defaults(func=command_deploy)
     parser_deploy.add_argument(
         '--name',
